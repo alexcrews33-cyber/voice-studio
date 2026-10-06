@@ -1,0 +1,514 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RVC Voice Conversion Control Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        hub: {
+                            bg: '#0A0D14',
+                            card: '#121824',
+                            border: '#1E293B',
+                            accent: '#6366F1',
+                            accentHover: '#4F46E5',
+                            text: '#F8FAFC',
+                            subtext: '#94A3B8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A0D14;
+            color: #F8FAFC;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1E293B;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #6366F1;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 text-slate-100">
+
+    <div class="max-w-6xl mx-auto w-full flex-grow flex flex-col gap-6">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center p-4 md:p-6 bg-hub-card border border-hub-border rounded-2xl shadow-xl gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white">
+                    <i class="fa-solid fa-microchip text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold tracking-wide flex items-center gap-2">
+                        RVC Conversion Control Hub
+                        <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">API Bridge v3.0</span>
+                    </h1>
+                    <p class="text-xs text-hub-subtext">Client UI for PyTorch & Applio RVC Inference Backends</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <button onclick="openCodeModal()" class="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-xs font-semibold rounded-xl border border-indigo-500/30 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-code"></i> Get Python Backend
+                </button>
+                <div id="statusBadge" class="flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl border bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                    <span id="statusDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                    <span id="statusText">Not Connected</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Column: Settings & Inputs -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <!-- Backend Settings -->
+                <section class="bg-hub-card p-5 rounded-2xl border border-hub-border flex flex-col gap-4 shadow-xl">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                        <i class="fa-solid fa-server"></i> 1. RVC Backend API Endpoint
+                    </h2>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-medium text-hub-subtext">Endpoint URL (FastAPI / Ngrok / Gradio)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="endpointUrl" value="http://127.0.0.1:8000/convert" placeholder="http://127.0.0.1:8000/convert" class="w-full bg-black/40 border border-hub-border focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 outline-none transition-all">
+                            <button onclick="pingBackend()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl border border-hub-border text-slate-200 transition-all flex items-center gap-1.5 whitespace-nowrap">
+                                <i class="fa-solid fa-signal"></i> Ping
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-hub-subtext">Paste your local FastAPI server address or Colab Ngrok tunnel URL.</p>
+                    </div>
+                </section>
+
+                <!-- Audio Input Section -->
+                <section class="bg-hub-card p-5 rounded-2xl border border-hub-border flex flex-col gap-4 shadow-xl">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                        <i class="fa-solid fa-microphone-lines"></i> 2. Source Vocal Stem Input
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div onclick="document.getElementById('audioInput').click()" class="p-4 bg-black/40 border border-dashed border-hub-border hover:border-indigo-500 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer transition-all">
+                            <i class="fa-solid fa-file-arrow-up text-2xl text-indigo-400 mb-1"></i>
+                            <span class="text-xs font-bold">Upload File</span>
+                            <span class="text-[10px] text-hub-subtext">WAV, MP3, OGG</span>
+                            <input type="file" id="audioInput" accept="audio/*" onchange="handleFileUpload(event)" class="hidden">
+                        </div>
+
+                        <div class="p-4 bg-black/40 border border-hub-border rounded-xl flex flex-col items-center justify-center text-center gap-1">
+                            <i id="micIcon" class="fa-solid fa-microphone text-2xl text-rose-500 mb-1"></i>
+                            <span class="text-xs font-bold">Record Vocals</span>
+                            <div class="flex gap-1.5 mt-1">
+                                <button id="startRecBtn" onclick="startMicRecord()" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold rounded-md transition-all">Record</button>
+                                <button id="stopRecBtn" onclick="stopMicRecord()" disabled class="px-2.5 py-1 bg-slate-700 text-white text-[10px] font-bold rounded-md opacity-50 cursor-not-allowed transition-all">Stop</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/30 p-3 rounded-xl border border-hub-border flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2 truncate">
+                            <i class="fa-solid fa-file-audio text-indigo-400"></i>
+                            <span id="loadedFileName" class="truncate text-hub-subtext">No audio stem loaded</span>
+                        </div>
+                        <button id="previewSourceBtn" onclick="playSourceAudio()" disabled class="px-2.5 py-1 bg-indigo-600/20 text-indigo-400 rounded-lg text-[10px] font-bold opacity-50 cursor-not-allowed">
+                            <i class="fa-solid fa-play mr-1"></i> Preview
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Voice Model Picker -->
+                <section class="bg-hub-card p-5 rounded-2xl border border-hub-border flex flex-col gap-3 shadow-xl">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                        <i class="fa-solid fa-robot"></i> 3. Target Model (.pth)
+                    </h2>
+                    <select id="modelSelect" class="w-full bg-black/40 border border-hub-border rounded-xl p-2.5 text-xs font-mono text-slate-200 outline-none focus:border-indigo-500">
+                        <option value="morgan.pth">Morgan RVC v2 (.pth)</option>
+                        <option value="mitchell.pth">Mitchell Narrator (.pth)</option>
+                        <option value="luke.pth">Luke Male Stem (.pth)</option>
+                        <option value="custom_model.pth">Custom Model (.pth)</option>
+                    </select>
+                </section>
+
+            </div>
+
+            <!-- Right Column: Inference Hyperparameters & Output -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <section class="bg-hub-card p-5 rounded-2xl border border-hub-border flex flex-col gap-4 shadow-xl">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders"></i> 4. RVC Hyperparameters
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-black/30 p-3.5 rounded-xl border border-hub-border flex flex-col gap-2">
+                            <div class="flex justify-between items-center text-xs font-medium">
+                                <span>Pitch Shift (f0_up_key)</span>
+                                <span id="pitchVal" class="text-indigo-400 font-mono font-bold">0 st</span>
+                            </div>
+                            <input type="range" id="pitchSlider" min="-12" max="12" step="1" value="0" oninput="document.getElementById('pitchVal').innerText = (this.value > 0 ? '+' + this.value : this.value) + ' st'">
+                            <div class="flex justify-between text-[10px] text-hub-subtext font-mono">
+                                <span>-12 (Male)</span>
+                                <span>0</span>
+                                <span>+12 (Female)</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/30 p-3.5 rounded-xl border border-hub-border flex flex-col gap-2">
+                            <div class="flex justify-between items-center text-xs font-medium">
+                                <span>Index Feature Rate</span>
+                                <span id="indexVal" class="text-indigo-400 font-mono font-bold">0.75</span>
+                            </div>
+                            <input type="range" id="indexSlider" min="0" max="1" step="0.05" value="0.75" oninput="document.getElementById('indexVal').innerText = this.value">
+                            <div class="flex justify-between text-[10px] text-hub-subtext font-mono">
+                                <span>0.0 (Clean)</span>
+                                <span>0.75 (Balanced)</span>
+                                <span>1.0 (Full RVC)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-hub-border">
+                        <span class="text-xs font-medium">Protect Voiceless Consonants</span>
+                        <input type="checkbox" id="protectToggle" checked class="w-4 h-4 accent-indigo-600 rounded">
+                    </div>
+                </section>
+
+                <section class="bg-hub-card p-5 rounded-2xl border border-hub-border flex flex-col gap-5 shadow-xl flex-grow justify-between">
+                    <div>
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> 5. Real-Time Conversion & Waveform
+                        </h2>
+
+                        <div class="h-28 bg-black/60 rounded-xl border border-hub-border p-2 relative flex items-center justify-center overflow-hidden">
+                            <canvas id="waveformCanvas" class="w-full h-full"></canvas>
+                            <div id="canvasOverlay" class="absolute text-xs font-mono text-hub-subtext bg-black/60 px-3 py-1 rounded-full border border-hub-border">
+                                Waiting for inference...
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="convertBtn" onclick="triggerRVCConversion()" class="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white font-bold text-sm md:text-base rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span id="convertBtnText">TRIGGER RVC CONVERSION</span>
+                    </button>
+
+                    <!-- Converted Output Audio Control -->
+                    <div class="bg-black/30 p-4 rounded-xl border border-hub-border flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                Converted Vocal Stream
+                            </span>
+                            <span id="outputModelTag" class="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">None</span>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <audio id="convertedAudioPlayer" controls class="w-full h-10 rounded-lg outline-none"></audio>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+        </main>
+
+        <footer class="text-center text-xs text-hub-subtext py-2 font-mono">
+            RVC Voice Conversion Control Hub &bull; Direct API Bridge Architecture
+        </footer>
+    </div>
+
+    <!-- Backend Script Modal -->
+    <div id="codeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-hub-card border border-hub-border max-w-3xl w-full rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="p-4 border-b border-hub-border flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-brands fa-python text-indigo-400"></i> Python FastAPI RVC Backend Code (`main.py`)
+                </h3>
+                <button onclick="closeCodeModal()" class="text-hub-subtext hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto font-mono text-xs text-slate-300 bg-black/60">
+<pre id="pythonCodeBlock">from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from rvc_python.infer import RVCInference
+import shutil
+import os
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+UPLOAD_DIR = "temp_audio"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Initialize RVC Inference
+rvc = RVCInference(device="cuda:0") # Change to "cpu" if no GPU
+
+@app.post("/convert")
+async def convert_voice(
+    file: UploadFile = File(...),
+    model_name: str = Form("morgan.pth"),
+    f0_up_key: int = Form(0),
+    index_rate: float = Form(0.75)
+):
+    input_path = os.path.join(UPLOAD_DIR, f"input_{file.filename}")
+    output_path = os.path.join(UPLOAD_DIR, f"output_{file.filename}")
+
+    with open(input_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Execute RVC Inference
+    rvc.load_model(f"models/{model_name}")
+    rvc.infer_file(
+        input_path=input_path,
+        output_path=output_path,
+        f0_up_key=f0_up_key,
+        index_rate=index_rate
+    )
+
+    return FileResponse(output_path, media_type="audio/wav")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)</pre>
+            </div>
+            <div class="p-4 border-t border-hub-border flex justify-between items-center bg-hub-card">
+                <span class="text-xs text-hub-subtext">Save as <code>main.py</code> & run <code>python main.py</code></span>
+                <button onclick="copyCode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all">
+                    <i class="fa-solid fa-copy mr-1"></i> Copy Python Code
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let loadedAudioBlob = null;
+        let mediaRecorder = null;
+        let micChunks = [];
+        let isRecording = false;
+        let audioContext = null;
+
+        window.onload = function() {
+            initWaveformCanvas();
+            pingBackend();
+        };
+
+        async function pingBackend() {
+            const endpoint = document.getElementById('endpointUrl').value;
+            const statusBadge = document.getElementById('statusBadge');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            try {
+                // Strip endpoint action path for basic health ping if needed
+                const baseUrl = endpoint.substring(0, endpoint.lastIndexOf('/'));
+                const res = await fetch(endpoint, { method: 'OPTIONS' }).catch(() => null);
+
+                statusBadge.className = "flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl border bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+                statusDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                statusText.innerText = "API Active";
+            } catch (err) {
+                statusBadge.className = "flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl border bg-rose-500/10 text-rose-400 border-rose-500/30";
+                statusDot.className = "w-2 h-2 rounded-full bg-rose-400";
+                statusText.innerText = "Unreachable";
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            loadedAudioBlob = file;
+            document.getElementById('loadedFileName').innerText = file.name;
+            enableSourcePreview();
+        }
+
+        function startMicRecord() {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                micChunks = [];
+
+                mediaRecorder.ondataavailable = e => micChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    loadedAudioBlob = new Blob(micChunks, { type: 'audio/wav' });
+                    document.getElementById('loadedFileName').innerText = "Mic_Recording_Stem.wav";
+                    enableSourcePreview();
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('startRecBtn').disabled = true;
+                document.getElementById('stopRecBtn').disabled = false;
+                document.getElementById('stopRecBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+                document.getElementById('micIcon').classList.add('animate-pulse');
+            }).catch(() => alert("Microphone access denied or not supported."));
+        }
+
+        function stopMicRecord() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                document.getElementById('startRecBtn').disabled = false;
+                document.getElementById('stopRecBtn').disabled = true;
+                document.getElementById('stopRecBtn').classList.add('opacity-50', 'cursor-not-allowed');
+                document.getElementById('micIcon').classList.remove('animate-pulse');
+            }
+        }
+
+        function enableSourcePreview() {
+            const btn = document.getElementById('previewSourceBtn');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function playSourceAudio() {
+            if (!loadedAudioBlob) return;
+            const url = URL.createObjectURL(loadedAudioBlob);
+            const audio = new Audio(url);
+            audio.play();
+        }
+
+        async function triggerRVCConversion() {
+            if (!loadedAudioBlob) {
+                alert("Please upload or record an audio vocal stem first!");
+                return;
+            }
+
+            const endpoint = document.getElementById('endpointUrl').value;
+            const modelName = document.getElementById('modelSelect').value;
+            const pitchShift = document.getElementById('pitchSlider').value;
+            const indexRate = document.getElementById('indexSlider').value;
+
+            const btn = document.getElementById('convertBtn');
+            const btnText = document.getElementById('convertBtnText');
+            const overlay = document.getElementById('canvasOverlay');
+
+            btn.disabled = true;
+            btnText.innerText = "INFERRING VIA PYTORCH BACKEND...";
+            overlay.innerText = "Processing RVC Model Conversion...";
+
+            const formData = new FormData();
+            formData.append("file", loadedAudioBlob, "vocal_input.wav");
+            formData.append("model_name", modelName);
+            formData.append("f0_up_key", pitchShift);
+            formData.append("index_rate", indexRate);
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+                const convertedBlob = await response.blob();
+                const convertedUrl = URL.createObjectURL(convertedBlob);
+
+                const player = document.getElementById('convertedAudioPlayer');
+                player.src = convertedUrl;
+                player.play();
+
+                document.getElementById('outputModelTag').innerText = modelName;
+                overlay.innerText = "Conversion Complete";
+
+            } catch (err) {
+                console.error("RVC Request Error:", err);
+                alert(`Backend Connection Error: ${err.message}\nEnsure your Python backend server is running and accessible.`);
+                overlay.innerText = "Conversion Failed";
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = "TRIGGER RVC CONVERSION";
+            }
+        }
+
+        function openCodeModal() {
+            document.getElementById('codeModal').classList.remove('hidden');
+        }
+
+        function closeCodeModal() {
+            document.getElementById('codeModal').classList.add('hidden');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('pythonCodeBlock').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("Python FastAPI code copied to clipboard!");
+        }
+
+        function initWaveformCanvas() {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function render() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const bars = 35;
+                const width = canvas.width / bars - 2;
+
+                for (let i = 0; i < bars; i++) {
+                    const height = Math.sin(Date.now() * 0.005 + i * 0.2) * 15 + 20;
+                    const x = i * (width + 2);
+                    const y = (canvas.height - height) / 2;
+
+                    ctx.fillStyle = '#1E293B';
+                    ctx.fillRect(x, y, width, height);
+                }
+                requestAnimationFrame(render);
+            }
+            render();
+        }
+    </script>
+</body>
+</html>
+```
