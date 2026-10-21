@@ -1,1 +1,55 @@
-.github/workflows/android-apk.yml
+.name: Build RVC Voice Studio APK
+
+on:
+workflow_dispatch:
+push:
+paths:
+- 'index.html'
+- 'package.json'
+- 'capacitor.config.json'
+- '.github/workflows/android-apk.yml'
+
+permissions:
+contents: read
+
+jobs:
+build:
+runs-on: ubuntu-latest
+steps:
+- name: Check out repository
+uses: actions/checkout@v4
+
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+
+  - name: Set up Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
+
+  - name: Install project dependencies
+    run: npm install
+
+  - name: Build web app
+    run: npm run build
+
+  - name: Set up Android project
+    run: |
+      npx cap add android
+      npx cap sync android
+
+  - name: Build debug APK
+    working-directory: android
+    run: |
+      chmod +x gradlew
+      ./gradlew assembleDebug
+
+  - name: Upload APK artifact
+    uses: actions/upload-artifact@v4
+    with:
+      name: rvc-voice-studio-debug-apk
+      path: android/app/build/outputs/apk/debug/app-debug.apk
+      if-no-files-found: error
